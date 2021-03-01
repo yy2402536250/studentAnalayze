@@ -1,21 +1,5 @@
 <template>
 	<div>
-		<el-drawer title="词云图设置(词条请用空格符分隔)" :visible.sync="drawer" :direction="direction" :beforeClose="drawerhandleClose">
-			<el-form :label-position="labelPosition" label-width="80px" :model="wordcloud">
-				<el-form-item label="添加停用词条">
-					<el-input type="textarea" placeholder="每个词语请用空格隔开" v-model="wordcloud.stopwd" maxlength="30" show-word-limit>
-					</el-input>
-				</el-form-item>
-				<el-form-item label="添加自定义词条">
-					<el-input type="textarea" placeholder="每个词语请用空格隔开" v-model="wordcloud.userdict" maxlength="30" show-word-limit>
-					</el-input>
-				</el-form-item>
-				<el-button @click="saveWordCloudSettings" style="float: right;margin-right: 5px;" type="primary" plain size="medium"
-				 :disabled="flag==3?false:true">
-					{{flag==3?'保存':'保存中'}}
-				</el-button>
-			</el-form>
-		</el-drawer>
 		<el-container>
 			<el-main class="search">
 				<el-form :inline="true" :model="stuForm" ref="stuForm" class="form-inline" style="margin: 0 auto;">
@@ -55,14 +39,16 @@
 			</el-aside>
 			<el-main>
 				<el-tag type="info" effect="dark">学生描述
-					<el-button @click="drawer = true" style="float: right;background: none;color: #FFFFFF;margin-top: 1px;margin-left: 5px;"
-					 plain size="mini">
-						分析不准确?
-					</el-button>
-				</el-tag>
+				<el-table :data="stuList" style="width: 100%" max-height="500">
+					<el-table-column fixed prop="tags" label="tags" width="150">
+					</el-table-column>
+					<el-table-column prop="values" label="values" width="120">
+					</el-table-column>
+					<el-table-column prop="level" label="level" width="120">
+					</el-table-column>
 
-				<div><img :src="imagePathPrefix+imagePath" alt="" width="600">
-				</div>
+				</el-table>
+				</el-tag>
 
 			</el-main>
 		</el-container>
@@ -73,15 +59,10 @@
 					<el-tab-pane label="学生成绩" name="stuscore">
 						<el-container id="stuscoretab">
 							<el-header>
-								<el-select v-model="value" size="mini" value="2018-2019" @change="changeTyChart" style="float: left;">
-									<el-option v-for="item in options" :key="item.value" :label="item.label" :value="item.value">
-									</el-option>
-								</el-select>
+
 							</el-header>
 							<el-container>
-								<el-aside style="height: 100%;">
-									<div id="mksradar" style="width: 290px;height: 290px;">1</div>
-								</el-aside>
+
 
 								<el-main style="height: 100%;">
 									<el-carousel indicator-position="outside" height="350px" :autoplay="false">
@@ -206,40 +187,7 @@
 
 						</div>
 					</el-tab-pane>
-					<el-tab-pane label="获奖/获证记录" name="reward">
-						<el-container>
-							<el-header>
-								<el-select v-model="value" size="mini" value="2018-2019" @change="changeTyChart" style="float: left;">
-									<el-option v-for="item in options" :key="item.value" :label="item.label" :value="item.value">
-									</el-option>
-								</el-select>
-							</el-header>
-							<el-container>
-								<el-main>
-									<el-timeline class="rewardRecords">
-										<el-timeline-item timestamp="2018/6/13" placement="top">
-											<el-card>
-												<h4>企业模拟经营活动二等奖</h4>
-												<p>校级 团队奖 获得于 2018/6/13</p>
-											</el-card>
-										</el-timeline-item>
-										<el-timeline-item timestamp="2018/5/16" placement="top">
-											<el-card>
-												<h4>长沙理工大学英语竞赛</h4>
-												<p>校级 个人奖 获得于 2018/5/16</p>
-											</el-card>
-										</el-timeline-item>
-										<el-timeline-item timestamp="2018/4/16" placement="top">
-											<el-card>
-												<h4>优秀志愿者</h4>
-												<p>校级 团队奖 获得于 2018/4/16</p>
-											</el-card>
-										</el-timeline-item>
-									</el-timeline>
-								</el-main>
-							</el-container>
-						</el-container>
-					</el-tab-pane>
+
 
 
 
@@ -258,6 +206,7 @@
 	export default {
 		data() {
 			return {
+			stuList: [],
 				stuForm: {
 					stuid: ''
 				},
@@ -383,10 +332,9 @@
 				let sno = this.state;
 				let flag = true;
 				if (sno.match(/^[0-9]*$/)) {
-					let loadingInstance = Loading.service({
-						fullscreen: true
-					});
-					this.$http.get("stuAnalysis/searchstu/" + sno)
+					this.drawSorcetrend(sno);
+					this.getStudentScore(sno)
+					this.$http.get("http://127.0.0.1:5000/stuAnalysis/searchstu?number=" + sno)
 						.then(({
 							data
 						}) => {
@@ -422,7 +370,7 @@
 								value: data.birthday,
 							}, {
 								key: '寝室',
-								value: data.buildingname + data.roomnum
+								value: data.dormitory
 							}, {
 								key: '学生类型',
 								value: data.stutype
@@ -430,6 +378,7 @@
 
 							this.drawMksRadar(this.tableData[0]["value"], this.value);
 							flag = true;
+							loadingInstance.close();
 						})
 						.catch(err => {
 							alert(this.$errmsg(err));
@@ -437,19 +386,22 @@
 							this.tableData = [];
 							flag = true;
 						});
-					this.$http.get("stuAnalysis/stuwordcloud/" + sno)
-						.then(({
-							data
-						}) => {
-							this.imagePath = data;
-							loadingInstance.close();
-						})
-						.catch(err => {
-							// alert(this.$errmsg(err));
-							this.imagePathPrefix = '';
-							this.imagePath = defaultImg;
-						});
-					this.getStudentScore(sno, '2018-2019');
+
+						this.$http.get("http://127.0.0.1:5000/stuAnalysis/analysis?number=" + sno)
+							.then(({
+								data
+							}) => {
+
+							let studata = data;
+							console.log(data);
+							console.log(studata);
+								this.stuList =studata;
+
+							})
+							.catch(err => {
+								console.log(err);
+								this.autoopen('错误', '网络错误,访问超时！');
+							});
 
 
 				} else {
@@ -467,7 +419,7 @@
 					case "stuscore":
 						break;
 					case "trend":
-						this.drawSorcetrend();
+						//this.drawSorcetrend();
 						break;
 					case "reward":
 
@@ -559,133 +511,10 @@
 			},
 
 			/**
-			 * @param {String} sno 学号
-			 * @param {String} xuenian 学年
-			 * 三育雷达图
-			 */
-			drawMksRadar(sno, xuenian) {
-
-				let myChart = this.$echarts.init(document.getElementById("mksradar"));
-				myChart.showLoading();
-				this.$http.post("stuAnalysis/mks/" + xuenian + "/" + sno)
-					.then(({
-						data
-					}) => {
-						this.mks = [];
-						this.mks.push(data["m"]);
-						this.mks.push(data["k"]);
-						this.mks.push(data["s"]);
-						this.studentscore.moral = (data['m'] * 25).toFixed(2);
-						this.studentscore.knowledge = (data['k'] * 70).toFixed(2);
-						this.studentscore.sports = (data['s'] * 5).toFixed(2);
-						let option = {
-							title: {
-								text: '学生综合评价',
-								textStyle: {
-									fontSize: 12
-								}
-							},
-							tooltip: {},
-
-							radar: {
-								// shape: 'circle',
-								name: {
-									textStyle: {
-										color: '#fff',
-										backgroundColor: '#999',
-										borderRadius: 3,
-										padding: [3, 5]
-									}
-								},
-								indicator: [{
-										name: '德育',
-										max: 1
-									},
-									{
-										name: '智育',
-										max: 1
-									},
-									{
-										name: '体育',
-										max: 1
-									}
-								]
-							},
-							series: [{
-								name: '三育',
-								type: 'radar',
-								areaStyle: {
-									normal: {}
-								},
-								data: [{
-									value: this.mks,
-									name: '三育'
-								}]
-							}]
-						};
-						myChart.hideLoading();
-						myChart.setOption(option);
-					})
-					.catch(err => {
-						myChart.hideLoading();
-
-					})
-			},
-			drawBlankRadar() {
-				let myChart = this.$echarts.init(document.getElementById("mksradar"));
-				let option = {
-					title: {
-						text: '学生综合评价',
-						textStyle: {
-							fontSize: 12
-						}
-					},
-					tooltip: {},
-
-					radar: {
-						// shape: 'circle',
-						name: {
-							textStyle: {
-								color: '#fff',
-								backgroundColor: '#999',
-								borderRadius: 3,
-								padding: [3, 5]
-							}
-						},
-						indicator: [{
-								name: '德育',
-								max: 1
-							},
-							{
-								name: '智育',
-								max: 1
-							},
-							{
-								name: '体育',
-								max: 1
-							}
-						]
-					},
-					series: [{
-						name: '三育',
-						type: 'radar',
-						areaStyle: {
-							normal: {}
-						},
-						data: [{
-							value: this.mks,
-							name: '三育'
-						}]
-					}]
-				};
-				myChart.setOption(option);
-			},
-
-			/**
 			 * 获取学生成绩面板数据
 			 */
-			getStudentScore(sno, xuenian) {
-				this.$http.post("stuAnalysis/courses/" + xuenian + "/" + sno + "/3")
+			getStudentScore(sno) {
+				this.$http.get("http://127.0.0.1:5000/stuAnalysis/top?number=" + sno)
 					.then(({
 						data
 					}) => {
@@ -701,7 +530,7 @@
 
 					});
 
-				this.$http.post("stuAnalysis/courses/" + xuenian + "/" + sno + "/50")
+				this.$http.get("http://127.0.0.1:5000/stuAnalysis/credit?number=" + sno)
 					.then(({
 						data
 					}) => {
@@ -723,13 +552,13 @@
 					.catch(err => {
 						alert(this.$errmsg(err));
 					});
-				this.$http.get("stuAnalysis/rank/" + xuenian + "/" + sno)
+				this.$http.get("http://127.0.0.1:5000/stuAnalysis/rank?number=" + sno)
 					.then(({
 						data
 					}) => {
 						this.studentscore.sorted = data;
 					});
-				this.$http.post("stuAnalysis/searchfailsRate/" + xuenian + "/" + sno)
+				this.$http.get("http://127.0.0.1:5000/stuAnalysis/searchfailsRate?number=" + sno)
 					.then(({
 						data
 					}) => this.studentscore.fails = data * 100);
@@ -740,98 +569,66 @@
 			 * 成绩趋势
 			 *
 			 */
-			drawSorcetrend() {
+			drawSorcetrend(sno) {
 				//TODO
 				let myChart = this.$echarts.init(document.getElementById("trendchart"));
-				let colors = ['#5793f3', '#d14a61', '#675bba'];
-				let option = {
-					tooltip: {
-						trigger: 'axis',
-						axisPointer: {
-							type: 'cross'
-						}
-					},
-					legend: {
-						data: ['德育分', '智育分', '体育分']
-					},
-					xAxis: [{
-						type: 'category',
-						axisTick: {
-							alignWithLabel: true
-						},
-						data: ['2017-2018', '2018-2019', '2019-2020']
-					}],
-					yAxis: [{
-							type: 'value',
-							name: '德育分',
-							min: 15,
-							max: 25,
-							interval: 1,
-							position: 'right',
-							axisLine: {
-								lineStyle: {
-									color: colors[0]
-								}
-							},
-							axisLabel: {
-								formatter: '{value} '
+				this.$http.get("http://127.0.0.1:5000/stuAnalysis/trend?number=" + sno)
+					.then(({
+						data
+					}) => {
+					console.log(data);
+					let xAxis_var = data['year'];
+					let score = data['score'];
+					let colors = ['#675bba'];
+					let option = {
+						tooltip: {
+							trigger: 'axis',
+							axisPointer: {
+								type: 'cross'
 							}
 						},
-						{
-							type: 'value',
-							name: '智育分',
-							min: 60,
-							max: 70,
-							interval: 2,
-							position: 'right',
-							offset: 80,
-							axisLine: {
-								lineStyle: {
-									color: colors[1]
-								}
+						legend: {
+							data: ['平均成绩']
+						},
+						xAxis: [{
+							type: 'category',
+							axisTick: {
+								alignWithLabel: true
 							},
-							axisLabel: {
-								formatter: '{value} '
+							data: xAxis_var
+						}],
+						yAxis: [
+							{
+								type: 'value',
+								name: '平均成绩',
+								min: 0,
+								max: 5,
+								position: 'left',
+								axisLine: {
+									lineStyle: {
+										color: colors[2]
+									}
+								},
+								axisLabel: {
+									formatter: '{value}'
+								},
+								interval: 1
 							}
-						},
-						{
-							type: 'value',
-							name: '体育分',
-							min: 0,
-							max: 5,
-							position: 'left',
-							axisLine: {
-								lineStyle: {
-									color: colors[2]
-								}
-							},
-							axisLabel: {
-								formatter: '{value}'
-							},
-							interval: 1
-						}
-					],
-					series: [{
-							name: '德育分',
-							type: 'line',
-							data: [20, 21.5, 22]
-						},
-						{
-							name: '智育分',
-							type: 'line',
-							yAxisIndex: 1,
-							data: [62, 61.5, 62.5]
-						},
-						{
-							name: '体育分',
-							type: 'line',
-							yAxisIndex: 2,
-							data: [4.5, 4, 3.8]
-						}
-					]
-				};
+						],
+						series: [
+							{
+								name: '平均成绩',
+								type: 'line',
+								yAxisIndex: 0,
+								data: score
+							}
+						]
+					};
+					myChart.setOption(option);
 
-				myChart.setOption(option);
+					})
+
+
 			},
 
 			autocheck(){

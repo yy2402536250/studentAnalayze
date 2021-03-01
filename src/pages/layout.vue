@@ -16,7 +16,7 @@
 	  </el-submenu>
 	  <el-menu-item index="2"><router-link to="/index/dashboard">主页</router-link></el-menu-item>
 	  <el-menu-item index="3"><router-link to="/analysis/personal">学生画像</router-link></el-menu-item>
-			<el-menu-item index="4"><router-link to="/analysis/classes">班级画像</router-link></el-menu-item>
+		
 	</el-menu>
 	<router-view></router-view>
 </div>

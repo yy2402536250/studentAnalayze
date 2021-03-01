@@ -477,22 +477,23 @@
 			},
 
 			/**
-			 * 全院成绩分布  //TODO 无数据，静态数据演示图
+			 * 全院阅读分布  //TODO 无数据，静态数据演示图
 			 */
 			drawTeacherGradeChart() {
 				//TODO
 				let myChart = this.$echarts.init(document.getElementById("tea_grade_chart"));
-				this.$http.get("http://127.0.0.1:5000/overview/allscore")
+				this.$http.get("http://127.0.0.1:5000/overview/read")
 					.then(({
 						data
 					}) => {
+					let dis_data = data;
 					let option = {
 						tooltip: {
 							trigger: 'item',
 							formatter: '{a} <br/>{b} : {c} ({d}%)'
 						},
 						title: {
-							text: "全院成绩分布",
+							text: "全院阅读分布",
 							left: "center"
 						},
 						legend: {
@@ -501,34 +502,14 @@
 							right: 10,
 							top: 20,
 							bottom: 20,
-							data: ['0-60', '61-70', '71-80', '81-90', '91-100']
+							data: ['极少', '偶尔', '经常', '频繁', '热爱']
 						},
 						series: [{
-							name: '全院成绩分布',
+							name: '全院阅读分布',
 							type: 'pie',
 							radius: '70%',
 							center: ['40%', '50%'],
-							data: [{
-									value: 30,
-									name: '0-60'
-								},
-								{
-									value: 40,
-									name: '61-70'
-								},
-								{
-									value: 50,
-									name: '71-80'
-								},
-								{
-									value: 60,
-									name: '81-90'
-								},
-								{
-									value: 70,
-									name: '91-100'
-								}
-							],
+							data: dis_data,
 							emphasis: {
 								itemStyle: {
 									shadowBlur: 10,
@@ -644,32 +625,44 @@
 			drawAttendChart(){
 				//TODO
 				let myChart = this.$echarts.init(document.getElementById("attendence"));
-				let option = {
-				     title: {
-				            text: '近7天学院到勤率(演示数据)',
-				            subtext: '(单位：%)',
-				            left: 'center'
-				        },
-				    xAxis: {
-				        type: 'category',
-				        data: ['2019-12-01', '2019-12-02', '2019-12-03', '2019-12-04', '2019-12-05', '2019-12-06', '2019-12-07']
-				    },
-				    yAxis: {
-				        type: 'value',
-				        min:80,
-				        max:100
-				    },
-				    tooltip: {
-				        trigger: 'axis'
-				    },
-				    series: [{
-				        data: [98, 85, 96,90, 92, 92, 86],
-				        type: 'line',
-				        smooth: true
-				    }]
-				};
+				this.$http.get("http://127.0.0.1:5000/overview/Cost")
+					.then(({
+						data
+					}) => {
+					let disdata = data;
+					console.log(disdata);
+					let option = {
+					     title: {
+					            text: '18年9月份学生消费(演示数据)',
+					            subtext: '(单位：千元)',
+					            left: 'center'
+					        },
+					    xAxis: {
+					        type: 'category',
+					        data: ['2018-09-05', '2018-09-10', '2018-09-15', '2018-09-20', '2018-09-25', '2018-09-30']
+					    },
+					    yAxis: {
+					        type: 'value',
+					        min:300,
+					        max:1000
+					    },
+					    tooltip: {
+					        trigger: 'axis'
+					    },
+					    series: [{
+					        data: disdata,
+					        type: 'line',
+					        smooth: true
+					    }]
+					};
 
-				myChart.setOption(option);
+					myChart.setOption(option);
+					})
+					.catch(err => {
+						console.log(err);
+						this.autoopen('错误', '网络错误,访问超时！');
+					});
+
 			}
 		},
 		mounted() {
@@ -695,6 +688,7 @@
 				.then(({
 					data
 				}) => {
+				console.log(data);
 					this.gradelist.push.apply(this.gradelist, data);
 					data.map(grade => {
 						let label = grade;
